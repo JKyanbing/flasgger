@@ -2,15 +2,13 @@
 ## Easy Swagger UI for your Flask API
 forked from：https://github.com/rochacbruno/flasgger
 
-# Installation
-
-dev version
+# 安装
 
 ```
 pip install https://github.com/JKyanbing/flasgger/tarball/master
 ```
 
-# Getting started
+# 开始
 pycharm 创建一个flask项目（http://www.jetbrains.com/pycharm/documentation/）
 
 编辑app.py文件
@@ -209,9 +207,10 @@ definitions:
 
 运行项目，打开：http://localhost:5000/apidocs/
 
-#简单说明
+# 简单说明
+
 目前不支持使用装饰器route修饰的路由
-```python
+```
 @app.rout('/index')
 def index():
     pass
@@ -221,7 +220,7 @@ def index():
     operationId必须指向一个flask.views.MethodView 或者 flask_restful.Resource的子类，
     并且是类相对所在包的完整路径。
   例如：restfulapi包中的MethodViewExample
-```yaml
+```
 operationId: restfulapi.MethodViewExample
 ```
 *参数validate=True时，flasgger会根据api.yml中的parameters规则，对实际请求的参数进行校验。
@@ -229,7 +228,7 @@ operationId: restfulapi.MethodViewExample
     body中的参数，则要提供required列表；
     写法查考：
     
- ```yaml
+ ```
  parameters:
     - name: "api_key"
       in: "header"
