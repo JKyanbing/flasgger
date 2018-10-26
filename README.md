@@ -11,13 +11,12 @@ pip install https://github.com/JKyanbing/flasgger/tarball/master
 ```
 
 # Getting started
+pycharm 创建一个flask项目（http://www.jetbrains.com/pycharm/documentation/）
 
-创建一个app.py文件
+编辑app.py文件
 ```python
-from flask import Flask,jsonify
-from flask.views import MethodView
+from flask import Flask
 from flasgger import Swagger
-from flask_restful import Resource
 import os
 
 app = Flask(__name__)
@@ -31,6 +30,17 @@ swag = Swagger(app=app,
                parse=True,
                automatic_route=True,
                validate=True)
+        
+        
+if __name__ == "__main__":
+    app.run()
+```
+
+新建一个restfulapi包，编辑__init__.py文件
+```python
+from flask import jsonify
+from flask.views import MethodView
+from flask_restful import Resource
 
 class ResourceExample(Resource):
     def get(self):
@@ -49,13 +59,9 @@ class MethodViewExample(MethodView):
 class PathViewExample(MethodView):
     def get(self, view_path):
         return jsonify({"view_path": view_path})
-        
-        
-if __name__ == "__main__":
-    app.run()
 ```
 
-在根目录下新建api_docs文件夹，创建文件api.yml
+新建api_docs文件夹，创建文件api.yml
 ```yaml
 swagger: "2.0"
 info:
@@ -70,7 +76,8 @@ info:
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
 basePath: "/v1"
 produces: ["application/json; charset=utf-8"]
-consumes: ["application/json; charset=utf-8",
+consumes: ["application/json",
+            "application/json; charset=utf-8",
             "text/xml; charset=utf-8"]
 
 tags:
@@ -87,7 +94,7 @@ paths:
       - "methodview_example"
       summary: "create a methodview example"
       description: ""
-      operationId: app.MethodViewExample
+      operationId: restfulapi.MethodViewExample
       parameters:
       - name: "api_key"
         in: "header"
@@ -99,8 +106,7 @@ paths:
         description: "Created example object"
         required: true
         schema:
-          $ref: "#definitions/MethodviewExample"
-
+          $ref: "#/definitions/MethodviewExample"
 
       responses:
         default:
@@ -112,7 +118,7 @@ paths:
       - "methodview_example"
       summary: "get methodview example"
       description: ""
-      operationId: app.PathViewExample
+      operationId: restfulapi.PathViewExample
       parameters:
       - name: "api_key"
         in: "header"
@@ -138,14 +144,13 @@ paths:
               parameter:
                 type: "string"
 
-
   /resource_example:
     post:
       tags:
       - "resource_example"
       summary: "Create resource example"
       description: ""
-      operationId: app.ResourceExample
+      operationId: restfulapi.ResourceExample
       produces:
       - "application/json"
       parameters:
@@ -169,7 +174,7 @@ paths:
       - "resource_example"
       summary: "Get example by example_id"
       description: ""
-      operationId: app.ResourceExample
+      operationId: restfulapi.ResourceExample
       parameters:
       - name: "example_id"
         in: "query"
@@ -184,7 +189,6 @@ paths:
             properties:
               parameter:
                 type: "string"
-
 
 definitions:
   MethodviewExample:
@@ -202,4 +206,7 @@ definitions:
       remark:
         type: "string"
 ```
+
+运行项目
+打开：http://localhost:5000/apidocs/
 
