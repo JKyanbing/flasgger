@@ -216,18 +216,18 @@ def index():
     pass
 ```
 
-*参数automatic_route=True时，根据api.yml中paths的operationId自动注册路由，所以，
-    operationId必须指向一个flask.views.MethodView 或者 flask_restful.Resource的子类，
-    并且是类相对所在包的完整路径。
+**automatic_route=True**  
+根据api.yml中paths的operationId自动注册路由，所以，operationId必须指向一个flask.views.MethodView 
+或者 flask_restful.Resource的子类，并且是类所在包的完整路径。  
   例如：restfulapi包中的MethodViewExample
 ```
 operationId: restfulapi.MethodViewExample
 ```
-*参数validate=True时，flasgger会根据api.yml中的parameters规则，对实际请求的参数进行校验。
+**validate=True**  
+flasgger会根据api.yml中的parameters规则，对实际请求的参数进行校验。
     header、path、query中的参数，当required: true时校验参数；
-    body中的参数，则要提供required列表；
-    写法查考：
-    
+    body中的参数，则要提供required列表；  
+    参考：
  ```
  parameters:
     - name: "api_key"
@@ -267,6 +267,6 @@ operationId: restfulapi.MethodViewExample
           remark:
             type: "string"
 ```
-*当前不对formData中的参数进行校验，如果需要使用formData，请写required: false；否则，可能产生无法预测的bug
+当前不对formData中的参数进行校验，如果需要使用formData，请写required: false；否则，可能产生无法预测的bug
 
 
