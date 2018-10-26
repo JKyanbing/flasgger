@@ -2,15 +2,13 @@
 ## Easy Swagger UI for your Flask API
 forked from：https://github.com/rochacbruno/flasgger
 
-# Installation
-
-dev version
+# 安装
 
 ```
 pip install https://github.com/JKyanbing/flasgger/tarball/master
 ```
 
-# Getting started
+# 开始
 pycharm 创建一个flask项目（http://www.jetbrains.com/pycharm/documentation/）
 
 编辑app.py文件
