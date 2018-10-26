@@ -223,6 +223,7 @@ def index():
 ```
 operationId: restfulapi.MethodViewExample
 ```
+校验方法使用：jsonschema.validate(https://github.com/Julian/jsonschema)  
 **validate=True**  
 flasgger会根据api.yml中的parameters规则，对实际请求的参数进行校验。
     header、path、query中的参数，当required: true时校验参数；
@@ -269,4 +270,8 @@ flasgger会根据api.yml中的parameters规则，对实际请求的参数进行�
 ```
 当前不对formData中的参数进行校验，如果需要使用formData，请写required: false；否则，可能产生无法预测的bug
 
+# 免责声明
 
+此包只是在rochacbruno/flasgger基础上拓展了功能，由于本人是一个python菜鸟，未对扩展的代码进行过完整的测试，
+如果开发人员使用该flasgger进行实际运营项目开发，因为此flasgger包造成不良后果的，本人概不负责。  
+此包仅供学习使用，是否用于实际项目开发，由你决定。
