@@ -840,3 +840,43 @@ class CachedLazyString(LazyString):
         if not self._cache:
             self._cache = self.text_type(self._func())
         return self._cache
+   
+
+# 从dict中保留指定的key
+def dict_select_key(in_dict, key_list):
+    new_dict = dict()
+    for key, value in in_dict.items():
+        if key in key_list:
+            new_dict[key] = value
+
+    return new_dict
+
+
+# 从dict中删除指定的key
+def dict_delete_key(in_dict, key_list):
+    new_dict = dict()
+    for key, value in in_dict.items():
+        if key not in key_list:
+            new_dict[key] = value
+
+    return new_dict
+
+
+class OperationIdError(ImportError):
+    def __init__(self, *args, **kwargs):
+        super().__init__(self)
+        self.args = args
+        self.kwargs = kwargs
+
+    def __str__(self):
+        if "view_module" in self.kwargs:
+            return "url: '%s' 找不到文件 '%s.py'" % (self.kwargs["url"], self.kwargs["view_module"])
+
+        if "view_class" in self.kwargs:
+            return "url: '%s' 找不到类 '%s'" % (self.kwargs["url"], self.kwargs["view_class"])
+
+        if "view_func" in self.kwargs:
+            return "url: '%s' 不支持方法 '%s','%s' 必须是flask.views.MethodView或者flask_restful.Resource的子类" % \
+                   (self.kwargs["url"], self.kwargs["view_func"], self.kwargs["view_func"])
+
+        return "'%s' OperationId 不能为空或者空字符串" % self.kwargs["url"]
