@@ -10,7 +10,7 @@ def fpath(name):
 
 
 def read(fname):
-    return open(fpath(fname)).read()
+    return open(fpath(fname),'r', encoding='UTF-8').read()
 
 
 def desc():
