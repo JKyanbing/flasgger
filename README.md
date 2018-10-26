@@ -2,13 +2,15 @@
 ## Easy Swagger UI for your Flask API
 forked from：https://github.com/rochacbruno/flasgger
 
-# 安装
+# Installation
+
+dev version
 
 ```
 pip install https://github.com/JKyanbing/flasgger/tarball/master
 ```
 
-# 开始
+# Getting started
 pycharm 创建一个flask项目（http://www.jetbrains.com/pycharm/documentation/）
 
 编辑app.py文件
@@ -205,6 +207,67 @@ definitions:
         type: "string"
 ```
 
-运行项目
-打开：http://localhost:5000/apidocs/
+运行项目，打开：http://localhost:5000/apidocs/
+
+#简单说明
+目前不支持使用装饰器route修饰的路由
+```python
+@app.rout('/index')
+def index():
+    pass
+```
+
+*参数automatic_route=True时，根据api.yml中paths的operationId自动注册路由，所以，
+    operationId必须指向一个flask.views.MethodView 或者 flask_restful.Resource的子类，
+    并且是类相对所在包的完整路径。
+  例如：restfulapi包中的MethodViewExample
+```yaml
+operationId: restfulapi.MethodViewExample
+```
+*参数validate=True时，flasgger会根据api.yml中的parameters规则，对实际请求的参数进行校验。
+    header、path、query中的参数，当required: true时校验参数；
+    body中的参数，则要提供required列表；
+    写法查考：
+    
+ ```yaml
+ parameters:
+    - name: "api_key"
+      in: "header"
+      description: "authenticated api_key"
+      required: true
+      type: "string"
+    
+    - name: "view_path"
+      in: "path"
+      description: "path参数"
+      required: true
+      type: "string"
+    
+    - name: "example_id"
+      in: "query"
+      description: "目标example id"
+      required: true
+      type: "string"
+    
+    - in: "body"
+      name: "object"
+      description: "Created user object"
+      required: true
+      schema:
+        required:
+        - id
+        - name
+        - remark
+        type: "object"
+        properties:
+          id:
+            type: "integer"
+            format: "int64"
+          name:
+            type: "string"
+          remark:
+            type: "string"
+```
+*当前不对formData中的参数进行校验，如果需要使用formData，请写required: false；否则，可能产生无法预测的bug
+
 
