@@ -2,12 +2,6 @@
 ## Easy Swagger UI for your Flask API
 forked from：https://github.com/rochacbruno/flasgger
 
-[![Build Status](https://travis-ci.org/JKyanbing/flasgger.svg?branch=master)](https://travis-ci.org/JKyanbing/flasgger)
-[![Code Health](https://landscape.io/github/JKyanbing/flasgger/master/landscape.svg?style=flat)](https://landscape.io/github/JKyanbing/flasgger/master)
-[![Coverage Status](https://coveralls.io/repos/github/JKyanbing/flasgger/badge.svg?branch=master)](https://coveralls.io/github/JKyanbing/flasgger?branch=master)
-[![PyPI](https://img.shields.io/pypi/v/flasgger.svg)](https://pypi.python.org/pypi/flasgger)
- <a target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&amp;business=rochacbruno%40gmail%2ecom&amp;lc=BR&amp;item_name=Flasgger&amp;no_note=0&amp;currency_code=USD&amp;bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHostedGuest"><img alt='Donate with Paypal' src='http://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif' /></a>
-
 # Installation
 
 dev version
