@@ -180,8 +180,8 @@ class Swagger(object):
 
     def __init__(
             self, app=None, config=None, sanitizer=None, template=None,
-            template_file=None, decorators=None, validation_function=None,
-            validation_error_handler=None, parse=False):
+            template_file=None, decorators=None, validate=False, validation_function=None,
+            validation_error_handler=None, parse=False, register_route=False):
         self._configured = False
         self.endpoints = []
         self.definition_models = []  # not in app, so track here
@@ -190,11 +190,13 @@ class Swagger(object):
         self.template = template
         self.template_file = template_file
         self.decorators = decorators
+        self.validate = validate
         self.validation_function = validation_function
         self.validation_error_handler = validation_error_handler
         self.apispecs = {}  # cached apispecs
         self.parse = parse
         self.schema_dict = {}
+        self.register_route = register_route
         if app:
             self.init_app(app)
 
@@ -219,9 +221,15 @@ class Swagger(object):
             self.schemas = {}
             self.format_checker = jsonschema.FormatChecker()
             self.parse_request(app)
-            
-        if self.template is not None:
+
+        if self.template is not None and self.register_route:
+            if Api is None:
+                raise RuntimeError('Please install flask_restful')
+            if Resource is None:
+                raise RuntimeError('Please install flask_restful')
             self.register_routes()
+
+        if self.validate:
             self.structure_schema_dict()
             self.validate_schema()
 
