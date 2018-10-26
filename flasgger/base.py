@@ -9,12 +9,16 @@ we add the endpoint to swagger specification output
 import re
 import os
 import codecs
+from inspect import isfunction
+
 import yaml
+from jsonschema import ValidationError
+
 try:
     import simplejson as json
 except ImportError:
     import json
-from functools import wraps, partial
+from functools import wraps, partial, reduce
 from collections import defaultdict
 from flask import Blueprint
 from flask import Markup
@@ -27,6 +31,16 @@ from flask import abort
 from flask import Response
 from flask.views import MethodView
 from flask.json import JSONEncoder
+
+try:
+    from flask_restful import Api
+except ImportError:
+    Api = None
+try:
+    from flask_restful import Resource
+except ImportError:
+    Resource = None
+
 try:
     from flask_restful.reqparse import RequestParser
 except ImportError:
@@ -41,6 +55,9 @@ from .utils import parse_definition_docstring
 from .utils import get_vendor_extension_fields
 from .utils import validate
 from .utils import LazyString
+from .utils import dict_select_key
+from .utils import dict_delete_key
+from .utils import OperationIdError
 from . import __version__
 
 NO_SANITIZER = lambda text: text  # noqa
@@ -52,6 +69,7 @@ class APIDocsView(MethodView):
     """
     The /apidocs
     """
+
     def __init__(self, *args, **kwargs):
         view_args = kwargs.pop('view_args', {})
         self.config = view_args.get('config')
@@ -114,6 +132,7 @@ class APISpecsView(MethodView):
     """
     The /apispec_1.json and other specs
     """
+
     def __init__(self, *args, **kwargs):
         self.loader = kwargs.pop('loader')
         super(APISpecsView, self).__init__(*args, **kwargs)
@@ -129,6 +148,7 @@ class SwaggerDefinition(object):
     """
     Class based definition
     """
+
     def __init__(self, name, obj, tags=None):
         self.name = name
         self.obj = obj
@@ -136,7 +156,6 @@ class SwaggerDefinition(object):
 
 
 class Swagger(object):
-
     DEFAULT_CONFIG = {
         "headers": [
         ],
@@ -175,6 +194,7 @@ class Swagger(object):
         self.validation_error_handler = validation_error_handler
         self.apispecs = {}  # cached apispecs
         self.parse = parse
+        self.schema_dict = {}
         if app:
             self.init_app(app)
 
@@ -199,6 +219,11 @@ class Swagger(object):
             self.schemas = {}
             self.format_checker = jsonschema.FormatChecker()
             self.parse_request(app)
+            
+        if self.template is not None:
+            self.register_routes()
+            self.structure_schema_dict()
+            self.validate_schema()
 
         self._configured = True
         app.swag = self
@@ -449,10 +474,12 @@ class Swagger(object):
         """
         Decorator to add class based definitions
         """
+
         def wrapper(obj):
             self.definition_models.append(SwaggerDefinition(name, obj,
                                                             tags=tags))
             return obj
+
         return wrapper
 
     def load_config(self, app):
@@ -527,6 +554,7 @@ class Swagger(object):
         """
         Inject headers after request
         """
+
         @app.after_request
         def after_request(response):  # noqa
             for header, value in self.config.get('headers'):
@@ -693,8 +721,181 @@ class Swagger(object):
             if schema is not None and schema.get('id').lower() == schema_id:
                 return schema
 
+    # 注册api
+    def register_routes(self):
+        if self.app is None:
+            raise RuntimeWarning("Flaswagger init error: app is None")
 
-# backwards compatibility
+        base_path = self.template.get("basePath", "")
+
+        paths = self.template.get("paths", {})
+
+        views_dict = dict()
+        resources_dict = dict()
+
+        for url_route_ex, route_items in paths.items():
+
+            url_route = base_path + url_route_ex.replace('{', '<').replace('}', '>')
+
+            for restful_method, method_items in route_items.items():
+                operation_id = str(method_items['operationId'])
+                path_list = operation_id.split('.')
+
+                if operation_id == "None" or operation_id == "":
+                    raise OperationIdError(url=url_route_ex)
+
+                view_name = operation_id.replace('.', '_')
+
+                method_view_func = None
+                if view_name in views_dict:
+                    method_view_func = views_dict[view_name]
+                else:
+                    view_class = path_list.pop()
+                    module_name = '.'.join(path_list)
+                    try:
+                        import_model = __import__(module_name, fromlist=path_list)
+                        method_view = getattr(import_model, view_class)
+
+                        if isfunction(method_view):
+                            raise OperationIdError(url=url_route_ex, view_func=view_class)
+
+                        if issubclass(method_view, Resource):
+                            if method_view in resources_dict:
+                                resources_dict[method_view].append(url_route)
+                                resources_dict[method_view] = list(set(resources_dict[method_view]))
+                            else:
+                                resources_dict[method_view] = [url_route]
+                        elif issubclass(method_view, MethodView):
+                            method_view_func = method_view.as_view(view_name)
+                            views_dict[view_name] = method_view_func
+
+                    except ModuleNotFoundError:
+                        raise OperationIdError(url=url_route_ex, view_module=module_name)
+                    except AttributeError:
+                        raise OperationIdError(url=url_route_ex, view_class=view_class)
+
+                if isfunction(method_view_func):
+                    self.app.add_url_rule(url_route, view_func=method_view_func, methods=[restful_method.upper()])
+
+        restful_api = Api(self.app)
+        for method_view, url_route_list in resources_dict.items():
+            restful_api.add_resource(method_view, *url_route_list)
+
+    @staticmethod
+    def params_reduce_fun(return_dict, parameter_dict):
+        in_where = parameter_dict.get("in", False)
+        where_name = parameter_dict.get("name", False)
+
+        if not in_where or not where_name:
+            return return_dict
+
+        in_where_dict = return_dict.get(in_where.lower(), {})
+
+        required_list = in_where_dict.get('required', [])
+
+        if in_where.lower() != "body":
+            if not in_where_dict.get('type', False):
+                in_where_dict.update({'type': 'object'})
+
+            if parameter_dict.get('required', False):
+                required_list.append(where_name)
+                in_where_dict.update({'required': required_list})
+
+            parameter_dict = dict_delete_key(parameter_dict, ["required", 'name', 'id', 'in', 'description'])
+            properties_dict = in_where_dict.get('properties', {})
+            properties_dict.update({where_name: parameter_dict})
+            in_where_dict.update({'properties': properties_dict})
+
+        if in_where.lower() == "body":
+            parameter_dict = parameter_dict.get('schema', {})
+            in_where_dict = parameter_dict
+
+        return_dict.update({in_where.lower(): in_where_dict})
+        return return_dict
+
+    # 构造用于校验的schema
+    def structure_schema_dict(self):
+
+        base_path = self.template.get("basePath", "")
+
+        paths = self.template.get("paths", {})
+
+        for url_route, route_items in paths.items():
+            url_route = base_path + url_route
+            if re.sub(r'{\w+}', r'\\w+', url_route) is not None:
+                url_route = re.sub(r'{\w+}', r'\\w+', url_route)
+
+            for restful_method, method_items in route_items.items():
+                parameters = reduce(self.params_reduce_fun, method_items.get("parameters", []), {})
+
+                if method_items.get('consumes', False):
+                    parameters['consumes'] = method_items['consumes']
+
+                if method_items.get('produces', False):
+                    parameters['produces'] = method_items['produces']
+
+                method_dict = self.schema_dict.get(restful_method.upper(), {})
+                method_dict.update({url_route: parameters})
+                self.schema_dict.update({restful_method.upper(): method_dict})
+
+    # 对参数进行校验
+    def validate_schema(self):
+
+        @self.app.before_request
+        def validate_func():
+            method_dict = self.schema_dict.get(request.method.upper(), {})
+            schema_dict = method_dict.get(request.path, {})
+
+            if not schema_dict:
+                for path_re, path_schema_dict in method_dict.items():
+                    if re.fullmatch(path_re, request.path) is not None:
+                        schema_dict = path_schema_dict
+                        break
+
+            if schema_dict:
+                if schema_dict.get('consumes', False):
+                    accept_consumes_list = self.template["consumes"].extend(schema_dict['consumes'])
+                else:
+                    accept_consumes_list = self.template["consumes"]
+
+                if request.headers['Accept'] not in accept_consumes_list:
+                    abort(Response("Accept: %s is refused" % request.headers['Accept'], status=400))
+
+                for in_where, where_schema_dict in schema_dict.items():
+                    try:
+                        if in_where == "body":
+                            jsonschema.validate(request.json,
+                                                dict(where_schema_dict,
+                                                     **{'definitions': self.template['definitions']}))
+                        elif in_where == "query":
+                            args_dict = request.args.to_dict()
+                            args_dict_lists = request.args.to_dict(False)
+
+                            for key, value in args_dict_lists.items():
+                                if value.__len__() > 1:
+                                    args_dict.update({key: value})
+
+                            jsonschema.validate(args_dict,
+                                                dict(where_schema_dict,
+                                                     **{'definitions': self.template['definitions']}))
+                        elif in_where == "header":
+                            required_list = where_schema_dict.get('required', [])
+
+                            new_header_dict = dict()
+                            for required_key in required_list:
+                                if request.headers.get(required_key, False):
+                                    new_header_dict[required_key] = request.headers.get(required_key)
+
+                            jsonschema.validate(new_header_dict,
+                                                dict(where_schema_dict,
+                                                     **{'definitions': self.template['definitions']}))
+
+                    except ValidationError as err:
+                        abort(Response(err.message, status=400))
+
+                    # backwards compatibility
+
+
 Flasgger = Swagger  # noqa
 
 
